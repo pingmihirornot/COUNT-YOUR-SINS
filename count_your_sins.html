@@ -1,0 +1,596 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Count Your Sins</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=UnifrakturMaguntia&family=Noto+Sans+Mono:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --black: #0a0806;
+      --deep: #110e0a;
+      --red: #8b1a1a;
+      --red-bright: #c0392b;
+      --gold: #8b6914;
+      --gold-bright: #c9992a;
+      --ash: #3a3530;
+      --fog: #6b6058;
+      --parchment: #c4b89a;
+      --smoke: #1e1a16;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: var(--black);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      font-family: 'Noto Sans Mono', monospace;
+      overflow-x: hidden;
+      position: relative;
+      cursor: crosshair;
+    }
+
+    /* Grain overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 100;
+      opacity: 0.4;
+    }
+
+    /* Vignette */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.85) 100%);
+      pointer-events: none;
+      z-index: 99;
+    }
+
+    /* Candle flicker lines */
+    .bg-lines {
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(255,255,255,0.008) 2px,
+        rgba(255,255,255,0.008) 4px
+      );
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .container {
+      position: relative;
+      z-index: 10;
+      width: 100%;
+      max-width: 680px;
+      padding: 60px 32px 120px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+    }
+
+    /* Header */
+    .cross {
+      font-size: 2rem;
+      color: var(--gold);
+      margin-bottom: 8px;
+      animation: flicker 4s ease-in-out infinite;
+      filter: drop-shadow(0 0 8px var(--gold));
+    }
+
+    @keyframes flicker {
+      0%, 100% { opacity: 1; }
+      47% { opacity: 1; }
+      48% { opacity: 0.7; }
+      49% { opacity: 1; }
+      85% { opacity: 1; }
+      86% { opacity: 0.5; }
+      87% { opacity: 1; }
+    }
+
+    h1 {
+      font-family: 'UnifrakturMaguntia', cursive;
+      font-size: clamp(2.8rem, 8vw, 5rem);
+      color: var(--parchment);
+      text-align: center;
+      line-height: 1;
+      letter-spacing: 2px;
+      text-shadow:
+        0 0 30px rgba(196, 184, 154, 0.2),
+        0 2px 4px rgba(0,0,0,0.8);
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 0.65rem;
+      color: var(--fog);
+      letter-spacing: 4px;
+      text-transform: uppercase;
+      margin-bottom: 48px;
+    }
+
+    /* Sin counter display */
+    .sin-counter {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 44px;
+      gap: 10px;
+    }
+
+    .count-label {
+      font-size: 0.6rem;
+      letter-spacing: 5px;
+      color: var(--fog);
+      text-transform: uppercase;
+    }
+
+    .count-number {
+      font-family: 'UnifrakturMaguntia', cursive;
+      font-size: 6rem;
+      color: var(--red-bright);
+      line-height: 1;
+      text-shadow: 0 0 40px rgba(192, 57, 43, 0.4);
+      transition: transform 0.1s;
+    }
+
+    .count-number.pulse {
+      animation: sinpulse 0.35s ease-out;
+    }
+
+    @keyframes sinpulse {
+      0% { transform: scale(1); }
+      40% { transform: scale(1.18); color: #e74c3c; text-shadow: 0 0 60px rgba(231,76,60,0.7); }
+      100% { transform: scale(1); }
+    }
+
+    /* Dots row */
+    .dots-row {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 6px;
+      max-width: 400px;
+      min-height: 18px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      box-shadow: 0 0 6px var(--red);
+      animation: dotin 0.3s ease-out;
+    }
+
+    @keyframes dotin {
+      from { transform: scale(0); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    /* Sin button */
+    #sin-btn {
+      position: relative;
+      background: transparent;
+      border: 1px solid var(--red);
+      color: var(--parchment);
+      font-family: 'UnifrakturMaguntia', cursive;
+      font-size: 2.2rem;
+      letter-spacing: 3px;
+      padding: 22px 64px;
+      cursor: crosshair;
+      transition: all 0.15s;
+      margin-bottom: 16px;
+      overflow: hidden;
+    }
+
+    #sin-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--red);
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    #sin-btn:hover::before { opacity: 0.12; }
+    #sin-btn:active::before { opacity: 0.28; }
+
+    #sin-btn:hover {
+      border-color: var(--red-bright);
+      box-shadow: 0 0 24px rgba(139, 26, 26, 0.4), inset 0 0 24px rgba(139,26,26,0.05);
+      color: #fff;
+    }
+
+    #sin-btn span { position: relative; z-index: 1; }
+
+    .btn-row {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 52px;
+    }
+
+    .ghost-btn {
+      background: transparent;
+      border: 1px solid var(--ash);
+      color: var(--fog);
+      font-family: 'Noto Sans Mono', monospace;
+      font-size: 0.65rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      padding: 9px 20px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .ghost-btn:hover {
+      border-color: var(--fog);
+      color: var(--parchment);
+    }
+
+    /* Falling sin area */
+    #sin-pit {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 50;
+      overflow: hidden;
+    }
+
+    .falling-sin {
+      position: absolute;
+      font-family: 'Noto Sans Mono', monospace;
+      font-size: 0.85rem;
+      font-weight: 300;
+      color: var(--red-bright);
+      white-space: nowrap;
+      letter-spacing: 1px;
+      pointer-events: none;
+      opacity: 0;
+      text-shadow: 0 0 10px rgba(192,57,43,0.5);
+    }
+
+    /* Confession panel */
+    #confession {
+      display: none;
+      width: 100%;
+      border: 1px solid var(--ash);
+      padding: 28px;
+      background: var(--smoke);
+      position: relative;
+    }
+
+    #confession::before {
+      content: '✝';
+      position: absolute;
+      top: -12px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--smoke);
+      padding: 0 8px;
+      color: var(--gold);
+      font-size: 1.2rem;
+    }
+
+    .confession-title {
+      font-size: 0.6rem;
+      letter-spacing: 5px;
+      color: var(--fog);
+      text-transform: uppercase;
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    #sin-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    #sin-list::-webkit-scrollbar { width: 2px; }
+    #sin-list::-webkit-scrollbar-track { background: transparent; }
+    #sin-list::-webkit-scrollbar-thumb { background: var(--ash); }
+
+    #sin-list li {
+      display: flex;
+      gap: 12px;
+      font-size: 0.72rem;
+      color: var(--parchment);
+      opacity: 0.8;
+      border-bottom: 1px solid rgba(255,255,255,0.03);
+      padding-bottom: 6px;
+    }
+
+    #sin-list li .sin-num {
+      color: var(--red);
+      min-width: 24px;
+    }
+
+    .confession-footer {
+      margin-top: 18px;
+      text-align: center;
+      font-size: 0.6rem;
+      color: var(--fog);
+      letter-spacing: 2px;
+      font-style: italic;
+    }
+
+    /* Reset */
+    #reset-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 24px;
+      background: transparent;
+      border: none;
+      color: var(--ash);
+      font-family: 'Noto Sans Mono', monospace;
+      font-size: 0.6rem;
+      letter-spacing: 2px;
+      cursor: pointer;
+      opacity: 0.4;
+      transition: opacity 0.2s;
+      z-index: 200;
+    }
+    #reset-btn:hover { opacity: 0.8; color: var(--fog); }
+
+    /* Last sin flash */
+    #last-sin {
+      font-size: 0.72rem;
+      color: var(--fog);
+      letter-spacing: 2px;
+      min-height: 20px;
+      text-align: center;
+      transition: opacity 0.5s;
+      font-style: italic;
+      margin-top: -8px;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-lines"></div>
+
+<div id="sin-pit"></div>
+
+<div class="container">
+  <div class="cross">✝</div>
+  <h1>Count Your Sins</h1>
+  <p class="subtitle">an honest reckoning</p>
+
+  <div class="sin-counter">
+    <div class="count-label">sins committed</div>
+    <div class="count-number" id="count-display">0</div>
+    <div class="dots-row" id="dots-row"></div>
+  </div>
+
+  <button id="sin-btn"><span>Commit Sin</span></button>
+  <div id="last-sin"></div>
+
+  <div class="btn-row">
+    <button class="ghost-btn" id="confess-btn">confess</button>
+    <button class="ghost-btn" id="absolve-btn" style="display:none;">close</button>
+  </div>
+
+  <div id="confession">
+    <div class="confession-title">your transgressions</div>
+    <ul id="sin-list"></ul>
+    <div class="confession-footer" id="confession-footer"></div>
+  </div>
+</div>
+
+<button id="reset-btn">⟳ reset</button>
+
+<script>
+  const SINS = [
+    "lying", "sloth", "envy", "pride", "greed",
+    "wrath", "gluttony", "gossip", "vanity", "lust",
+    "procrastination", "judging others", "eating the last slice",
+    "ghosting someone", "replying 'lol' to end a conversation",
+    "pretending to be busy", "forgetting birthdays",
+    "skipping leg day", "double texting", "loud chewing",
+    "passive aggression", "petty revenge", "holding a grudge",
+    "lying about being 5 mins away", "ignoring a notification",
+    "eating someone else's food", "faking a laugh",
+    "telling a white lie", "checking your phone mid-conversation",
+    "talking during a movie", "leaving dishes in the sink",
+    "taking credit for someone else's idea",
+  ];
+
+  const CONFESSIONS = [
+    "...and you thought no one was watching.",
+    "the Lord sees all. even that.",
+    "repentance is the first step. this is not it.",
+    "are you proud of yourself? don't answer that.",
+    "you have such range.",
+  ];
+
+  let total = 0;
+  let sinLog = [];
+  let confessing = false;
+
+  const countDisplay = document.getElementById('count-display');
+  const dotsRow = document.getElementById('dots-row');
+  const sinBtn = document.getElementById('sin-btn');
+  const confessBtn = document.getElementById('confess-btn');
+  const absolveBtn = document.getElementById('absolve-btn');
+  const confessionPanel = document.getElementById('confession');
+  const sinList = document.getElementById('sin-list');
+  const confessionFooter = document.getElementById('confession-footer');
+  const resetBtn = document.getElementById('reset-btn');
+  const lastSinEl = document.getElementById('last-sin');
+  const pit = document.getElementById('sin-pit');
+
+  function spawnFallingSin(sin) {
+    const el = document.createElement('div');
+    el.classList.add('falling-sin');
+    el.textContent = `⚡ ${sin}`;
+
+    const x = Math.random() * (window.innerWidth - 220);
+    el.style.left = x + 'px';
+    el.style.top = '-40px';
+    pit.appendChild(el);
+
+    // Physics
+    const obj = {
+      el,
+      x,
+      y: -40,
+      vy: 2 + Math.random() * 2.5,
+      vx: (Math.random() - 0.5) * 1.2,
+      gravity: 0.3 + Math.random() * 0.15,
+      floorY: window.innerHeight - 50 - Math.random() * 100,
+      restitution: 0.32 + Math.random() * 0.2,
+      friction: 0.88,
+      rotation: (Math.random() - 0.5) * 10,
+      vrot: (Math.random() - 0.5) * 0.6,
+      opacity: 0,
+      settled: false,
+      fadeTimer: null,
+    };
+
+    function animate() {
+      if (obj.settled) {
+        // Fade out after settling
+        if (!obj.fadeTimer) {
+          obj.fadeTimer = setTimeout(() => {
+            let op = 1;
+            const fade = setInterval(() => {
+              op -= 0.02;
+              el.style.opacity = op;
+              if (op <= 0) { clearInterval(fade); el.remove(); }
+            }, 40);
+          }, 2200);
+        }
+        return;
+      }
+
+      obj.vy += obj.gravity;
+      obj.y += obj.vy;
+      obj.x += obj.vx;
+      obj.vrot *= 0.97;
+      obj.rotation += obj.vrot;
+      if (obj.opacity < 1) obj.opacity = Math.min(1, obj.opacity + 0.08);
+
+      if (obj.y >= obj.floorY) {
+        obj.y = obj.floorY;
+        obj.vy = -obj.vy * obj.restitution;
+        obj.vx *= obj.friction;
+        obj.vrot *= 0.55;
+        if (Math.abs(obj.vy) < 0.9) {
+          obj.vy = 0;
+          obj.settled = true;
+        }
+      }
+
+      const elW = el.offsetWidth || 140;
+      if (obj.x < 0) { obj.x = 0; obj.vx *= -0.4; }
+      if (obj.x + elW > window.innerWidth) { obj.x = window.innerWidth - elW; obj.vx *= -0.4; }
+
+      el.style.transform = `translate(${obj.x - x}px, ${obj.y}px) rotate(${obj.rotation}deg)`;
+      el.style.opacity = obj.opacity;
+
+      requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+  }
+
+  sinBtn.addEventListener('click', () => {
+    const sin = SINS[Math.floor(Math.random() * SINS.length)];
+    total++;
+    sinLog.push(sin);
+
+    // Update counter
+    countDisplay.textContent = total;
+    countDisplay.classList.remove('pulse');
+    void countDisplay.offsetWidth;
+    countDisplay.classList.add('pulse');
+
+    // Update dots (max 30)
+    if (total <= 30) {
+      const dot = document.createElement('div');
+      dot.classList.add('dot');
+      dotsRow.appendChild(dot);
+    }
+
+    // Last sin label
+    lastSinEl.style.opacity = '0';
+    setTimeout(() => {
+      lastSinEl.textContent = sin;
+      lastSinEl.style.opacity = '1';
+    }, 80);
+
+    // Drop 1-2 falling sins
+    const drops = Math.random() < 0.3 ? 2 : 1;
+    for (let i = 0; i < drops; i++) {
+      setTimeout(() => spawnFallingSin(sin), i * 120);
+    }
+
+    // Update confession if open
+    if (confessing) renderConfession();
+  });
+
+  function renderConfession() {
+    sinList.innerHTML = '';
+    sinLog.forEach((s, i) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="sin-num">${String(i+1).padStart(2,'0')}.</span><span>${s}</span>`;
+      sinList.appendChild(li);
+    });
+    sinList.scrollTop = sinList.scrollHeight;
+    if (sinLog.length > 0) {
+      confessionFooter.textContent = CONFESSIONS[Math.floor(Math.random() * CONFESSIONS.length)];
+    } else {
+      confessionFooter.textContent = 'you are pure. suspicious.';
+    }
+  }
+
+  confessBtn.addEventListener('click', () => {
+    confessing = true;
+    renderConfession();
+    confessionPanel.style.display = 'block';
+    confessBtn.style.display = 'none';
+    absolveBtn.style.display = 'inline-block';
+  });
+
+  absolveBtn.addEventListener('click', () => {
+    confessing = false;
+    confessionPanel.style.display = 'none';
+    confessBtn.style.display = 'inline-block';
+    absolveBtn.style.display = 'none';
+  });
+
+  resetBtn.addEventListener('click', () => {
+    total = 0;
+    sinLog = [];
+    countDisplay.textContent = '0';
+    dotsRow.innerHTML = '';
+    lastSinEl.textContent = '';
+    confessionPanel.style.display = 'none';
+    confessBtn.style.display = 'inline-block';
+    absolveBtn.style.display = 'none';
+    confessing = false;
+    // Clear all falling sins
+    pit.innerHTML = '';
+  });
+</script>
+</body>
+</html>
