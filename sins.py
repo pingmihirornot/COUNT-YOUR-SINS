@@ -37,7 +37,7 @@ def confess():
                 print("\n  ...and you thought no one was watching.")
             continue
 
-        # Commit a sin
+        # You have been a bad bad boy
         sin = random.choice(SINS)
         total += 1
         sin_log.append(sin)
@@ -54,7 +54,7 @@ def confess():
             time.sleep(delay)
             print("\033[A\033[K", end="", flush=True)
 
-        # Bounce
+        # daddy will punish you
         for b in range(2):
             print(f"{' ' * indent}⚡ {sin}")
             time.sleep(0.12 + b * 0.06)
@@ -63,7 +63,7 @@ def confess():
             time.sleep(0.08)
             print("\033[A\033[K", end="", flush=True)
 
-        # Settle
+        # do you want a piece of this
         print(f"{' ' * indent}⚡ {sin}")
         print(f"\n  {'🔴 ' * min(total, 20)}")
         print(f"  sin #{total}: {sin}")
